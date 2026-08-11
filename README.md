@@ -1,69 +1,102 @@
-| Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-H2 | ESP32-H21 | ESP32-P4 | ESP32-S2 | ESP32-S3 |
-| ----------------- | ----- | -------- | -------- | -------- | -------- | --------- | -------- | --------- | -------- | -------- | -------- |
+# Potenciometro con micro-ROS (ESP32)
 
-# Blink Example
+TP Integrador — FULGOR ROS2-IA
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+Firmware para ESP32 que usa uno de los conversores 
+analogicos-digitales (ADC) del micro para leer la señal
+de salida de un potenciometro y publica la posición (0 a 100%) 
+y el voltaje (0 a 3.3v) como tópicos de **ROS2**, vía **micro-ROS**.
 
-This example demonstrates how to blink a LED by using the GPIO driver or using the [led_strip](https://components.espressif.com/component/espressif/led_strip) library if the LED is addressable e.g. [WS2812](https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf). The `led_strip` library is installed via [component manager](main/idf_component.yml).
 
-## How to Use Example
+## Objetivos
 
-Before project configuration and build, be sure to set the correct chip target using `idf.py set-target <chip_name>`.
+- Configurar el módulo PCNT del ESP32 para leer las señales de un encoder de cuadratura en modo 4x.
+- Implementar un nodo en el ESP32 usando micro-ROS que publique posición y voltaje.
+- Visualizar y validar los datos del del potenciometro.
 
-### Hardware Required
+## Hardware
 
-* A development board with normal LED or addressable LED on-board (e.g., ESP32-S3-DevKitC, ESP32-C6-DevKitC etc.)
-* A USB cable for Power supply and programming
+- ESP32 DevKit (30 pines).
+- Potenciometro (50K).
+- Red WiFi compartida entre el ESP32 y la PC que corre el Agent.
 
-See [Development Boards](https://www.espressif.com/en/products/devkits) for more information about it.
+### Conexión
 
-### Configure the Project
+| POTENCIOMETRO | ESP32 |
+|---|---|
+| SALIDA | GPIO35 |
+| GND | GND |
+| +   | 3V3 |
 
-Open the project configuration menu (`idf.py menuconfig`).
+![Potenciometro](docs/img/potenciometro.jpg)
 
-In the `Example Configuration` menu:
 
-* Select the LED type in the `Blink LED type` option.
-  * Use `GPIO` for regular LED
-  * Use `LED strip` for addressable LED
-* If the LED type is `LED strip`, select the backend peripheral
-  * `RMT` is only available for ESP targets with RMT peripheral supported
-  * `SPI` is available for all ESP targets
-* Set the GPIO number used for the signal in the `Blink GPIO number` option.
-* Set the blinking period in the `Blink period in ms` option.
 
-### Build and Flash
+## Estructura del proyecto
 
-Run `idf.py -p PORT flash monitor` to build, flash and monitor the project.
-
-(To exit the serial monitor, type ``Ctrl-]``.)
-
-See the [Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html) for full steps to configure and use ESP-IDF to build projects.
-
-## Example Output
-
-As you run the example, you will see the LED blinking, according to the previously defined period. For the addressable LED, you can also change the LED color by setting the `led_strip_set_pixel(led_strip, 0, 16, 16, 16);` (LED Strip, Pixel Number, Red, Green, Blue) with values from 0 to 255 in the [source file](main/blink_example_main.c).
-
-```text
-I (315) example: Example configured to blink addressable LED!
-I (325) example: Turning the LED OFF!
-I (1325) example: Turning the LED ON!
-I (2325) example: Turning the LED OFF!
-I (3325) example: Turning the LED ON!
-I (4325) example: Turning the LED OFF!
-I (5325) example: Turning the LED ON!
-I (6325) example: Turning the LED OFF!
-I (7325) example: Turning the LED ON!
-I (8325) example: Turning the LED OFF!
+```
+potenciometro/
+├── main/
+│   ├── potenciometro_microros_main.c   # firmware: nodo micro-ROS
+│   └── CMakeLists.txt
+├── components/
+│   └── micro_ros_espidf_component/   # componente micro-ROS 
+├── pc_tools/
+│   └── potenciometro_monitor.py        # monitor de PC: posición, curva y log CSV
+└── docs/img/                     # capturas y fotos del armado
 ```
 
-Note: The color order could be different according to the LED model.
+## Tópicos publicados
 
-The pixel number indicates the pixel position in the LED strip. For a single LED, use 0.
+| Tópico | Tipo | Descripción |
+|---|---|---|
+| `/posicion` | `std_msgs/Int32` | Posición del potenciometro |
+| `/votaje` | `std_msgs/Float32` | Voltaje de salida del potenciometro |
 
-## Troubleshooting
 
-* If the LED isn't blinking, check the GPIO or the LED type selection in the `Example Configuration` menu.
 
-For any technical queries, please open an [issue](https://github.com/espressif/esp-idf/issues) on GitHub. We will get back to you soon.
+## Cómo compilar y flashear
+
+```bash
+mkdir components
+cd components
+git clone -b jazzy https://github.com/micro-ROS/micro_ros_espidf_component.git
+```
+
+
+```bash
+cd potenciometro
+. $IDF_PATH/export.sh
+idf.py menuconfig   # micro-ROS Settings: Agent IP/Port, WiFi SSID/Password
+idf.py build
+idf.py flash monitor
+```
+
+
+## Cómo levantar el micro-ROS Agent
+
+En otra terminal (esta sí con ROS2 sourceado):
+
+```bash
+cd ~/micro_ws
+source install/setup.bash
+ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888
+```
+
+Verificación:
+```bash
+ros2 topic list
+ros2 topic echo /posicion
+ros2 topic echo /voltaje
+```
+
+## Visualización y log de datos
+
+
+```bash
+cd pc_tools
+python3 potenciometro_monitor.py
+```
+
+![Monitor en vivo: posición y voltaje](docs/img/grafica.png)
+
