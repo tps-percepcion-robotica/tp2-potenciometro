@@ -2,6 +2,8 @@
 
 TP Integrador — FULGOR ROS2-IA
 
+Grupo: Francisco Soria, Martin Bravo, Cande Benavides, Dolores Gómez, Tatiana Pagano, Abigail Barbieri
+
 Firmware para ESP32 que usa uno de los conversores
 analogicos-digitales (ADC) del micro para leer la señal
 de salida de un potenciometro y publica la posición (0 a 100%)
